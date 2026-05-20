@@ -537,8 +537,8 @@
         showNotification(`Imagen "${file.name}" cargada. Puedes hacer preguntas sobre ella.`, 'success');
 
         // Habilitar chat
-        chatInput.disabled = false;
-        chatInput.placeholder = 'Escribe tu pregunta sobre la imagen...';
+        updateChatState();
+        chatInput.focus();
       };
       reader.readAsDataURL(file);
     }
@@ -661,12 +661,12 @@
 
     // Actualizar estado del input de chat
     function updateChatState() {
-      const hasDocument = state.activeDocument !== null;
-      chatInput.disabled = !hasDocument;
-      sendButton.disabled = !hasDocument;
-      chatInput.placeholder = hasDocument
+      const hasContent = state.activeDocument !== null || state.activeImage !== null;
+      chatInput.disabled = !hasContent;
+      sendButton.disabled = !hasContent;
+      chatInput.placeholder = hasContent
         ? 'Escribe tu pregunta...'
-        : 'Sube y selecciona un documento para comenzar';
+        : 'Sube un documento o toma una foto para comenzar';
     }
 
     // Enviar mensaje
