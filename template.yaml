@@ -5,7 +5,7 @@ Description: Chatbot empresarial con Amazon Bedrock - Autenticacion con Cognito
 Parameters:
   AdminEmail:
     Type: String
-    Description: Email del usuario que tendra acceso al chatbot
+    Description: Correo electronico del usuario autorizado para acceder al chatbot. Recibira una contrasena temporal por email.
 
 Globals:
   Function:

@@ -18,8 +18,8 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-# SAM config (generado por sam deploy --guided)
-samconfig.toml
+# SAM config
+# samconfig.toml se incluye en el repo con valores por defecto
 
 # Logs
 *.log
