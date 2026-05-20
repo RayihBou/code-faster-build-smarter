@@ -89,12 +89,10 @@ Tamano maximo: 20 MB por archivo.
 Para eliminar todos los recursos creados:
 
 ```bash
-sam delete
+./scripts/cleanup.sh
 ```
 
-O desde la consola: CloudFormation -> Stacks -> code-faster-chatbot -> Delete
-
-**Nota:** Si el bucket S3 tiene documentos, vaciarlo primero o usar `--no-prompts` con confirmacion.
+Este script vacía el bucket S3 y elimina el stack de CloudFormation sin errores. No usar `sam delete` directamente (falla si el bucket tiene objetos).
 
 ## Costos Estimados
 
