@@ -4,7 +4,7 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 
 const bedrockClient = new BedrockRuntimeClient({ region: 'us-east-1' });
-const MODEL_ID = 'anthropic.claude-haiku-4-5-20251001-v1:0';
+const MODEL_ID = 'us.anthropic.claude-haiku-4-5-20251001-v1:0';
 const MAX_TOKENS = 2048;
 
 // Prompt del sistema que restringe las respuestas al contenido del documento
