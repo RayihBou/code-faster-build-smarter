@@ -122,6 +122,12 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /chat
             Method: POST
+        ChatImage:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /chat-image
+            Method: POST
         Documents:
           Type: HttpApi
           Properties:

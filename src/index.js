@@ -3,7 +3,7 @@
 
 import { uploadDocument, getDocument, listDocuments } from './s3.js';
 import { extractText, isValidFormat, MAX_FILE_SIZE } from './text-extractor.js';
-import { generateResponseStream } from './bedrock.js';
+import { generateResponseStream, generateImageResponseStream } from './bedrock.js';
 
 /**
  * Handler principal de Lambda - enruta según método y path
@@ -19,6 +19,10 @@ export async function handler(event) {
 
     if (method === 'POST' && path === '/chat') {
       return await handleChat(event);
+    }
+
+    if (method === 'POST' && path === '/chat-image') {
+      return await handleChatImage(event);
     }
 
     if (method === 'GET' && path === '/documents') {
@@ -227,6 +231,32 @@ function parseMultipart(body, boundary) {
  * Genera un ID de sesión único
  * @returns {string} ID de sesión
  */
+/**
+ * Maneja chat con imagen (vision)
+ */
+async function handleChatImage(event) {
+  const body = JSON.parse(event.isBase64Encoded
+    ? Buffer.from(event.body, 'base64').toString('utf-8')
+    : event.body);
+
+  const { message, image, mediaType, history } = body;
+
+  if (!message) {
+    return jsonResponse(400, { error: 'El campo "message" es requerido' });
+  }
+
+  if (!image) {
+    return jsonResponse(400, { error: 'No se recibio imagen' });
+  }
+
+  let fullResponse = '';
+  for await (const chunk of generateImageResponseStream(image, mediaType || 'image/jpeg', message, history || [])) {
+    fullResponse += chunk;
+  }
+
+  return jsonResponse(200, { response: fullResponse });
+}
+
 function generateSessionId() {
   return `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 }

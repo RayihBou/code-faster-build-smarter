@@ -417,6 +417,12 @@
         </div>
         <input type="file" id="file-input" data-testid="file-input"
                accept=".pdf,.docx,.doc,.xlsx,.xls,.txt,.md">
+        <div class="upload-area" id="camera-area" style="margin-top:8px; border-color:#0073bb;">
+          <div class="upload-icon" style="color:#0073bb;">&#9679;</div>
+          <div class="upload-text">Tomar foto de documento</div>
+          <div class="upload-formats">Usa la camara para capturar un documento</div>
+        </div>
+        <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none;">
       </div>
       <div class="document-list" id="document-list" data-testid="document-list">
         <!-- Los documentos se agregan dinámicamente -->
@@ -470,12 +476,46 @@
     const sendButton = document.getElementById('send-button');
 
     // Inicializar sesión
+    // Manejar captura de imagen (cámara)
+    async function handleImageCapture(file) {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result.split(',')[1];
+        const mediaType = file.type || 'image/jpeg';
+
+        // Guardar imagen activa en estado
+        state.activeImage = { base64, mediaType, fileName: file.name };
+        state.activeDocument = null;
+
+        // Mostrar en lista de documentos
+        const docList = document.getElementById('document-list');
+        docList.innerHTML = `<div class="document-item active"><span class="doc-icon">&#9679;</span><span class="doc-name">${file.name}</span></div>`;
+
+        showNotification(`Imagen "${file.name}" cargada. Puedes hacer preguntas sobre ella.`, 'success');
+
+        // Habilitar chat
+        chatInput.disabled = false;
+        chatInput.placeholder = 'Escribe tu pregunta sobre la imagen...';
+      };
+      reader.readAsDataURL(file);
+    }
+
     function initSession() {
       state.sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     }
 
     // Eventos de subida de archivos
     uploadArea.addEventListener('click', () => fileInput.click());
+
+    // Cámara
+    const cameraArea = document.getElementById('camera-area');
+    const cameraInput = document.getElementById('camera-input');
+    cameraArea.addEventListener('click', () => cameraInput.click());
+    cameraInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) handleImageCapture(file);
+      cameraInput.value = '';
+    });
 
     uploadArea.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -589,7 +629,7 @@
     // Enviar mensaje
     async function sendMessage() {
       const message = chatInput.value.trim();
-      if (!message || state.isLoading || !state.activeDocument) return;
+      if (!message || state.isLoading || (!state.activeDocument && !state.activeImage)) return;
 
       // Mostrar mensaje del usuario
       addMessage(message, 'user');
@@ -602,14 +642,15 @@
       const typingEl = showTypingIndicator();
 
       try {
-        const response = await fetch('/chat', {
+        const requestBody = state.activeImage
+          ? { message, image: state.activeImage.base64, mediaType: state.activeImage.mediaType, history: state.conversationHistory }
+          : { message, documentKey: state.activeDocument.key, history: state.conversationHistory };
+
+        const endpoint = state.activeImage ? '/chat-image' : '/chat';
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message,
-            documentKey: state.activeDocument.key,
-            history: state.conversationHistory,
-          }),
+          body: JSON.stringify(requestBody),
         });
 
         const data = await response.json();

@@ -87,3 +87,59 @@ function buildMessages(documentText, userMessage, history) {
 
   return messages;
 }
+
+/**
+ * Genera respuesta basada en una imagen usando visión de Claude
+ * @param {string} imageBase64 - Imagen en base64
+ * @param {string} mediaType - Tipo MIME (image/jpeg, image/png, etc.)
+ * @param {string} userMessage - Pregunta del usuario sobre la imagen
+ * @param {Array} conversationHistory - Historial de conversación
+ * @returns {AsyncGenerator<string>} Stream de chunks de texto
+ */
+export async function* generateImageResponseStream(imageBase64, mediaType, userMessage, conversationHistory = []) {
+  const messages = [];
+
+  for (const msg of conversationHistory) {
+    messages.push({ role: msg.role, content: msg.content });
+  }
+
+  messages.push({
+    role: 'user',
+    content: [
+      { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
+      { type: 'text', text: userMessage },
+    ],
+  });
+
+  const requestBody = {
+    anthropic_version: 'bedrock-2023-05-31',
+    max_tokens: MAX_TOKENS,
+    system: 'Eres un asistente que analiza imagenes de documentos. Responde preguntas basandote en lo que ves en la imagen. Si no puedes leer algo claramente, indicalo. Responde en el mismo idioma de la pregunta.',
+    messages,
+  };
+
+  const command = new InvokeModelWithResponseStreamCommand({
+    modelId: MODEL_ID,
+    contentType: 'application/json',
+    accept: 'application/json',
+    body: JSON.stringify(requestBody),
+  });
+
+  try {
+    const response = await bedrockClient.send(command);
+    for await (const event of response.body) {
+      if (event.chunk) {
+        const chunk = JSON.parse(new TextDecoder().decode(event.chunk.bytes));
+        if (chunk.type === 'content_block_delta' && chunk.delta?.text) {
+          yield chunk.delta.text;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error al invocar Bedrock (vision):', error);
+    if (error.name === 'AccessDeniedException') {
+      throw new Error('No se tiene acceso al modelo de Bedrock. Verifica que Claude Haiku 4.5 este habilitado.');
+    }
+    throw new Error(`Error al analizar imagen: ${error.message}`);
+  }
+}
