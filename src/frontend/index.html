@@ -191,6 +191,13 @@
       border-bottom-left-radius: 4px;
     }
 
+    .message.assistant p { margin: 0 0 8px; }
+    .message.assistant p:last-child { margin: 0; }
+    .message.assistant h2, .message.assistant h3, .message.assistant h4 { margin: 12px 0 6px; font-size: 1em; }
+    .message.assistant ul { margin: 6px 0; padding-left: 20px; }
+    .message.assistant li { margin: 3px 0; }
+    .message.assistant strong { font-weight: 600; }
+
     .message.system {
       align-self: center;
       background-color: #fff3e0;
@@ -612,6 +619,22 @@
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    // Convertir Markdown básico a HTML
+    function markdownToHtml(text) {
+      return text
+        .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+        .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+        .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/^- (.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/\n/g, '<br>')
+        .replace(/^/, '<p>')
+        .replace(/$/, '</p>');
+    }
+
     // Agregar mensaje con efecto de typing progresivo
     async function addMessageWithTyping(text, role) {
       const welcome = chatMessages.querySelector('.welcome-message');
@@ -625,7 +648,7 @@
       let displayed = '';
       for (let i = 0; i < words.length; i++) {
         displayed += (i === 0 ? '' : ' ') + words[i];
-        messageEl.textContent = displayed;
+        messageEl.innerHTML = markdownToHtml(displayed);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         await new Promise(r => setTimeout(r, 30));
       }
