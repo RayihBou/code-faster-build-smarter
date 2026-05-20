@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chatbot Empresarial - Amazon Bedrock</title>
+  <link rel="icon" href="https://a0.awsstatic.com/libra-css/images/site/fav/favicon.ico">
   <style>
     * {
       margin: 0;
@@ -31,16 +32,8 @@
     }
 
     .header-logo {
-      width: 32px;
-      height: 32px;
-      background-color: #ff9900;
-      border-radius: 4px;
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      font-size: 14px;
-      color: #232f3e;
     }
 
     .header-title {
@@ -366,7 +359,7 @@
 <body>
   <!-- Header -->
   <header class="header">
-    <div class="header-logo">AI</div>
+    <img class="header-logo" src="https://assets.rayihbou.people.aws.dev/aws-logo-dark.svg" alt="AWS" style="height:28px;">
     <span class="header-title">Chatbot Empresarial</span>
     <span class="header-subtitle">Impulsado por Amazon Bedrock</span>
   </header>
@@ -528,17 +521,7 @@
 
     // Obtener icono según tipo de archivo
     function getDocIcon(fileName) {
-      const ext = fileName.split('.').pop().toLowerCase();
-      const icons = {
-        pdf: '\u{1F4C4}',
-        docx: '\u{1F4DD}',
-        doc: '\u{1F4DD}',
-        xlsx: '\u{1F4CA}',
-        xls: '\u{1F4CA}',
-        txt: '\u{1F4C3}',
-        md: '\u{1F4C3}',
-      };
-      return icons[ext] || '\u{1F4C4}';
+      return '&#9679;';
     }
 
     // Seleccionar documento activo
