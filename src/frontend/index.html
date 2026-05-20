@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbot Empresarial - Amazon Bedrock</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Amazon Ember', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f2f3f3;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header con branding AWS */
+    .header {
+      background-color: #232f3e;
+      color: #ffffff;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .header-logo {
+      width: 32px;
+      height: 32px;
+      background-color: #ff9900;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+      color: #232f3e;
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .header-subtitle {
+      font-size: 12px;
+      color: #aab7b8;
+      margin-left: auto;
+    }
+
+    /* Layout principal */
+    .main-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Panel lateral de documentos */
+    .sidebar {
+      width: 280px;
+      background-color: #ffffff;
+      border-right: 1px solid #d5dbdb;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid #d5dbdb;
+      background-color: #fafafa;
+    }
+
+    .sidebar-header h3 {
+      font-size: 14px;
+      color: #232f3e;
+      margin-bottom: 12px;
+    }
+
+    .upload-area {
+      border: 2px dashed #d5dbdb;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .upload-area:hover {
+      border-color: #ff9900;
+      background-color: #fff8f0;
+    }
+
+    .upload-area.dragging {
+      border-color: #ff9900;
+      background-color: #fff3e0;
+    }
+
+    .upload-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .upload-text {
+      font-size: 12px;
+      color: #545b64;
+    }
+
+    .upload-formats {
+      font-size: 10px;
+      color: #879596;
+      margin-top: 4px;
+    }
+
+    .document-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .document-item {
+      padding: 10px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      transition: background-color 0.2s;
+      font-size: 13px;
+      color: #232f3e;
+    }
+
+    .document-item:hover {
+      background-color: #f2f3f3;
+    }
+
+    .document-item.active {
+      background-color: #fff3e0;
+      border: 1px solid #ff9900;
+    }
+
+    .document-item .doc-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .document-item .doc-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Area de chat */
+    .chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message {
+      max-width: 75%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-wrap: break-word;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background-color: #232f3e;
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+      background-color: #ffffff;
+      color: #232f3e;
+      border: 1px solid #d5dbdb;
+      border-bottom-left-radius: 4px;
+    }
+
+    .message.system {
+      align-self: center;
+      background-color: #fff3e0;
+      color: #8a6d3b;
+      font-size: 12px;
+      border-radius: 20px;
+      padding: 8px 16px;
+    }
+
+    .welcome-message {
+      text-align: center;
+      color: #545b64;
+      padding: 40px 20px;
+    }
+
+    .welcome-message h2 {
+      font-size: 20px;
+      color: #232f3e;
+      margin-bottom: 8px;
+    }
+
+    .welcome-message p {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    /* Input de chat */
+    .chat-input-container {
+      padding: 16px 24px;
+      background-color: #ffffff;
+      border-top: 1px solid #d5dbdb;
+    }
+
+    .chat-input-wrapper {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid #d5dbdb;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      max-height: 120px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .chat-input:focus {
+      border-color: #ff9900;
+    }
+
+    .chat-input:disabled {
+      background-color: #f2f3f3;
+      cursor: not-allowed;
+    }
+
+    .send-button {
+      padding: 12px 20px;
+      background-color: #ff9900;
+      color: #232f3e;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      white-space: nowrap;
+    }
+
+    .send-button:hover {
+      background-color: #ec7211;
+    }
+
+    .send-button:disabled {
+      background-color: #d5dbdb;
+      color: #879596;
+      cursor: not-allowed;
+    }
+
+    /* Loading indicator */
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      padding: 12px 16px;
+      align-self: flex-start;
+      background-color: #ffffff;
+      border: 1px solid #d5dbdb;
+      border-radius: 12px;
+      border-bottom-left-radius: 4px;
+    }
+
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #879596;
+      border-radius: 50%;
+      animation: typing 1.4s infinite;
+    }
+
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-4px); }
+    }
+
+    /* Notificaciones */
+    .notification {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+    }
+
+    .notification.success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .notification.error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 100%;
+        max-height: 200px;
+        border-right: none;
+        border-bottom: 1px solid #d5dbdb;
+      }
+
+      .main-container {
+        flex-direction: column;
+      }
+
+      .message {
+        max-width: 90%;
+      }
+    }
+
+    /* Input file oculto */
+    #file-input {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-logo">AI</div>
+    <span class="header-title">Chatbot Empresarial</span>
+    <span class="header-subtitle">Impulsado por Amazon Bedrock</span>
+  </header>
+
+  <!-- Layout principal -->
+  <div class="main-container">
+    <!-- Panel lateral de documentos -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h3>Documentos</h3>
+        <div class="upload-area" data-testid="upload-area" id="upload-area">
+          <div class="upload-icon">+</div>
+          <div class="upload-text">Subir documento</div>
+          <div class="upload-formats">PDF, Word, Excel, TXT, MD (max 20 MB)</div>
+        </div>
+        <input type="file" id="file-input" data-testid="file-input"
+               accept=".pdf,.docx,.doc,.xlsx,.xls,.txt,.md">
+      </div>
+      <div class="document-list" id="document-list" data-testid="document-list">
+        <!-- Los documentos se agregan dinámicamente -->
+      </div>
+    </aside>
+
+    <!-- Area de chat -->
+    <main class="chat-container">
+      <div class="chat-messages" id="chat-messages" data-testid="chat-messages">
+        <div class="welcome-message">
+          <h2>Bienvenido al Chatbot Empresarial</h2>
+          <p>Sube un documento y hazle preguntas en lenguaje natural.</p>
+          <p>El chatbot responde exclusivamente con información del documento.</p>
+        </div>
+      </div>
+
+      <div class="chat-input-container">
+        <div class="chat-input-wrapper">
+          <textarea
+            class="chat-input"
+            id="chat-input"
+            data-testid="chat-input"
+            placeholder="Escribe tu pregunta..."
+            rows="1"
+            disabled
+          ></textarea>
+          <button class="send-button" id="send-button" data-testid="send-button" disabled>
+            Enviar
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Estado de la aplicación
+    const state = {
+      sessionId: null,
+      documents: [],
+      activeDocument: null,
+      conversationHistory: [],
+      isLoading: false,
+    };
+
+    // Elementos del DOM
+    const uploadArea = document.getElementById('upload-area');
+    const fileInput = document.getElementById('file-input');
+    const documentList = document.getElementById('document-list');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const sendButton = document.getElementById('send-button');
+
+    // Inicializar sesión
+    function initSession() {
+      state.sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    }
+
+    // Eventos de subida de archivos
+    uploadArea.addEventListener('click', () => fileInput.click());
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragging');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragging');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragging');
+      const file = e.dataTransfer.files[0];
+      if (file) uploadFile(file);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) uploadFile(file);
+      fileInput.value = '';
+    });
+
+    // Subir archivo al servidor
+    async function uploadFile(file) {
+      if (!state.sessionId) initSession();
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('sessionId', state.sessionId);
+
+      try {
+        showNotification('Subiendo documento...', 'success');
+
+        const response = await fetch('/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showNotification(data.error, 'error');
+          return;
+        }
+
+        // Agregar documento a la lista
+        const doc = {
+          key: data.key,
+          fileName: data.fileName,
+        };
+        state.documents.push(doc);
+        renderDocumentList();
+
+        // Seleccionar automáticamente si es el primer documento
+        if (state.documents.length === 1) {
+          selectDocument(doc);
+        }
+
+        showNotification(`"${data.fileName}" subido exitosamente`, 'success');
+
+      } catch (error) {
+        showNotification('Error al subir el documento. Intenta de nuevo.', 'error');
+        console.error('Error de subida:', error);
+      }
+    }
+
+    // Renderizar lista de documentos
+    function renderDocumentList() {
+      documentList.innerHTML = state.documents.map(doc => {
+        const isActive = state.activeDocument && state.activeDocument.key === doc.key;
+        const icon = getDocIcon(doc.fileName);
+        return `
+          <div class="document-item ${isActive ? 'active' : ''}"
+               data-testid="document-item-${doc.fileName}"
+               onclick="selectDocument(${JSON.stringify(doc).replace(/"/g, '&quot;')})">
+            <span class="doc-icon">${icon}</span>
+            <span class="doc-name">${doc.fileName}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Obtener icono según tipo de archivo
+    function getDocIcon(fileName) {
+      const ext = fileName.split('.').pop().toLowerCase();
+      const icons = {
+        pdf: '\u{1F4C4}',
+        docx: '\u{1F4DD}',
+        doc: '\u{1F4DD}',
+        xlsx: '\u{1F4CA}',
+        xls: '\u{1F4CA}',
+        txt: '\u{1F4C3}',
+        md: '\u{1F4C3}',
+      };
+      return icons[ext] || '\u{1F4C4}';
+    }
+
+    // Seleccionar documento activo
+    function selectDocument(doc) {
+      state.activeDocument = doc;
+      state.conversationHistory = [];
+      renderDocumentList();
+      updateChatState();
+      addSystemMessage(`Documento activo: "${doc.fileName}". Puedes hacer preguntas sobre su contenido.`);
+    }
+
+    // Actualizar estado del input de chat
+    function updateChatState() {
+      const hasDocument = state.activeDocument !== null;
+      chatInput.disabled = !hasDocument;
+      sendButton.disabled = !hasDocument;
+      chatInput.placeholder = hasDocument
+        ? 'Escribe tu pregunta...'
+        : 'Sube y selecciona un documento para comenzar';
+    }
+
+    // Enviar mensaje
+    async function sendMessage() {
+      const message = chatInput.value.trim();
+      if (!message || state.isLoading || !state.activeDocument) return;
+
+      // Mostrar mensaje del usuario
+      addMessage(message, 'user');
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+
+      // Mostrar indicador de carga
+      state.isLoading = true;
+      sendButton.disabled = true;
+      const typingEl = showTypingIndicator();
+
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            documentKey: state.activeDocument.key,
+            history: state.conversationHistory,
+          }),
+        });
+
+        const data = await response.json();
+
+        // Remover indicador de carga
+        typingEl.remove();
+
+        if (!response.ok) {
+          addMessage(data.error || 'Error al obtener respuesta', 'system');
+          return;
+        }
+
+        // Mostrar respuesta del asistente
+        addMessage(data.response, 'assistant');
+
+        // Actualizar historial
+        state.conversationHistory.push(
+          { role: 'user', content: message },
+          { role: 'assistant', content: data.response }
+        );
+
+      } catch (error) {
+        typingEl.remove();
+        addMessage('Error de conexión. Intenta de nuevo.', 'system');
+        console.error('Error de chat:', error);
+      } finally {
+        state.isLoading = false;
+        sendButton.disabled = false;
+        chatInput.focus();
+      }
+    }
+
+    // Agregar mensaje al chat
+    function addMessage(text, role) {
+      // Remover mensaje de bienvenida si existe
+      const welcome = chatMessages.querySelector('.welcome-message');
+      if (welcome) welcome.remove();
+
+      const messageEl = document.createElement('div');
+      messageEl.className = `message ${role}`;
+      messageEl.textContent = text;
+      chatMessages.appendChild(messageEl);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Agregar mensaje del sistema
+    function addSystemMessage(text) {
+      const welcome = chatMessages.querySelector('.welcome-message');
+      if (welcome) welcome.remove();
+
+      const messageEl = document.createElement('div');
+      messageEl.className = 'message system';
+      messageEl.textContent = text;
+      chatMessages.appendChild(messageEl);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Mostrar indicador de escritura
+    function showTypingIndicator() {
+      const typingEl = document.createElement('div');
+      typingEl.className = 'typing-indicator';
+      typingEl.innerHTML = `
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      `;
+      chatMessages.appendChild(typingEl);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return typingEl;
+    }
+
+    // Mostrar notificación
+    function showNotification(message, type) {
+      // Remover notificaciones previas
+      document.querySelectorAll('.notification').forEach(n => n.remove());
+
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.textContent = message;
+      document.body.appendChild(notification);
+
+      setTimeout(() => notification.remove(), 4000);
+    }
+
+    // Eventos del input de chat
+    sendButton.addEventListener('click', sendMessage);
+
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Auto-resize del textarea
+    chatInput.addEventListener('input', () => {
+      chatInput.style.height = 'auto';
+      chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+    });
+
+    // Inicializar
+    initSession();
+  </script>
+</body>
+</html>

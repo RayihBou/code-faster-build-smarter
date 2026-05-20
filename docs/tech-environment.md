@@ -42,8 +42,8 @@ us-east-1 (Bedrock con Claude Haiku disponible)
 
 ## Modelo de IA
 
-- ID: anthropic.claude-3-haiku-20240307-v1:0
-- Razón: Bajo costo (~$0.00025/1K input tokens), respuesta rápida, suficiente para Q&A con contexto
+- ID: anthropic.claude-haiku-4-5-20251001-v1:0
+- Razón: Bajo costo, respuesta rápida, suficiente para Q&A con contexto. Reemplaza a Claude 3 Haiku que fue marcado como Legacy.
 - Context window: 200K tokens (soporta documentos largos)
 
 ## Estructura del Proyecto (resultado esperado post AI-DLC)
@@ -73,6 +73,7 @@ code-faster-build-smarter/
 - Nombres de archivos en kebab-case
 - Variables y funciones en camelCase
 - Comentarios en español
+- Todo el texto visible al usuario (frontend, mensajes de error, placeholders) debe estar en español
 
 ## Deploy
 

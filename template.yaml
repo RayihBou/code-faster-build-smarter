@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Chatbot empresarial con contexto documental - Amazon Bedrock (Claude Haiku)
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: nodejs20.x
+    Architectures:
+      - arm64
+
+Resources:
+  # Bucket S3 para almacenar documentos subidos
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # Función Lambda principal del chatbot
+  ChatbotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/index.handler
+      FunctionUrlConfig:
+        AuthType: NONE
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref DocumentsBucket
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref DocumentsBucket
+        - Statement:
+            - Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource: arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-haiku-20241022-v1:0
+
+Outputs:
+  ChatbotUrl:
+    Description: URL del chatbot
+    Value: !GetAtt ChatbotFunctionUrl.FunctionUrl
+  DocumentsBucketName:
+    Description: Nombre del bucket S3 para documentos
+    Value: !Ref DocumentsBucket

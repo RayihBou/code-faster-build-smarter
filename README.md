@@ -1,90 +1,113 @@
-# Code Faster, Build Smarter
+# Chatbot Empresarial con Contexto Documental
 
-Workshop: Construya un chatbot empresarial con Amazon Bedrock usando la metodología AI-DLC y Kiro IDE — de requisitos a deploy en menos de 60 minutos.
+Chatbot serverless que permite subir documentos (PDF, Word, Excel, TXT, Markdown) y hacer preguntas en lenguaje natural sobre su contenido. Utiliza Amazon Bedrock (Claude Haiku 4.5) para generar respuestas basadas exclusivamente en el documento.
 
-## Qué es Este Proyecto
-
-Un starter kit pre-configurado con la metodología [AI-DLC](https://aws.amazon.com/blogs/devops/ai-driven-development-life-cycle/) (AI-Driven Development Life Cycle) para construir un chatbot empresarial que responde preguntas sobre documentos internos usando Amazon Bedrock.
-
-El proyecto incluye:
-- Reglas de AI-DLC pre-configuradas para Kiro
-- Documentos de visión y entorno técnico listos para iniciar
-- Script de validación de prerequisites
-
-## Arquitectura Resultante
+## Arquitectura
 
 ```
-Usuario (Browser) → Lambda Function URL
-                      ├── GET /        → Frontend HTML (chat UI)
-                      ├── POST /upload → Sube documento a S3
-                      └── POST /chat   → Invoca Bedrock con contexto del documento
+Usuario (Browser)
+    |
+    +-- GET /           -> Lambda sirve frontend HTML
+    +-- POST /upload    -> Lambda recibe documento, lo guarda en S3
+    +-- POST /chat      -> Lambda lee documento de S3, invoca Bedrock, retorna respuesta
+    +-- GET /documents  -> Lambda lista documentos de la sesion
 ```
 
-**Servicios:** Lambda + S3 + Bedrock (Claude Haiku)
-**Deploy:** SAM (CloudFormation stack)
-**Cleanup:** `sam delete` (elimina todo en un comando)
+**Servicios AWS:**
+- AWS Lambda (Function URL, sin API Gateway)
+- Amazon S3 (almacenamiento de documentos)
+- Amazon Bedrock (Claude Haiku 4.5 para generacion de respuestas)
 
-## Inicio Rápido
+## Requisitos Previos
 
-### 1. Clonar
+1. **AWS CLI** configurado con credenciales validas
+2. **AWS SAM CLI** instalado ([instrucciones](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html))
+3. **Node.js 20.x** instalado
+4. **Amazon Bedrock** con acceso habilitado al modelo Claude Haiku 4.5 en us-east-1
+
+### Habilitar Claude Haiku 4.5 en Bedrock
+
+1. Ir a la consola de AWS -> Amazon Bedrock -> Model access
+2. Solicitar acceso a "Anthropic - Claude Haiku 4.5"
+3. Esperar aprobacion (generalmente inmediata)
+
+## Deploy
 
 ```bash
-git clone https://github.com/RayihBou/code-faster-build-smarter.git
-cd code-faster-build-smarter
-```
-
-### 2. Validar prerequisites
-
-```bash
-chmod +x scripts/validate-setup.sh
-./scripts/validate-setup.sh
-```
-
-### 3. Abrir en Kiro e iniciar AI-DLC
-
-Abrir el proyecto en Kiro y escribir en el chat:
-
-> Usando AI-DLC, construye el chatbot descrito en docs/vision.md con el entorno técnico definido en docs/tech-environment.md
-
-AI-DLC guiará automáticamente por las fases:
-1. **Inception** — Genera requisitos, historias y unidades de trabajo
-2. **Construction** — Propone arquitectura, genera código y tests
-3. **Operations** — Guía el deploy con SAM
-
-### 4. Deploy (requiere AWS CLI + SAM CLI + credenciales)
-
-```bash
+# Construir el proyecto
 sam build
+
+# Desplegar (primera vez, interactivo)
 sam deploy --guided
 ```
 
-### 5. Cleanup
+Durante el deploy guiado:
+- Stack name: `code-faster-chatbot`
+- Region: `us-east-1`
+- Confirm changes: Yes
+- Allow SAM CLI IAM role creation: Yes
+- ChatbotFunction Function Url without auth: Yes
+
+Al finalizar, el output muestra la URL del chatbot.
+
+## Uso
+
+1. Acceder a la URL del output (ChatbotUrl)
+2. Subir un documento (PDF, Word, Excel, TXT o Markdown)
+3. Seleccionar el documento en el panel lateral
+4. Escribir preguntas en el chat
+
+## Formatos Soportados
+
+| Formato | Extensiones |
+|---------|-------------|
+| PDF | .pdf |
+| Word | .docx, .doc |
+| Excel | .xlsx, .xls |
+| Texto plano | .txt |
+| Markdown | .md |
+
+Tamano maximo: 20 MB por archivo.
+
+## Estructura del Proyecto
+
+```
+├── src/
+│   ├── index.js              # Handler principal (router)
+│   ├── bedrock.js            # Modulo de invocacion a Bedrock
+│   ├── s3.js                 # Modulo de operaciones S3
+│   ├── text-extractor.js     # Extraccion de texto multi-formato
+│   └── frontend/
+│       └── index.html        # Interfaz web del chatbot
+├── template.yaml             # SAM template (IaC)
+├── package.json              # Dependencias del proyecto
+└── README.md
+```
+
+## Eliminacion
+
+Para eliminar todos los recursos creados:
 
 ```bash
 sam delete
 ```
 
-## Prerequisites
+O desde la consola: CloudFormation -> Stacks -> code-faster-chatbot -> Delete
 
-| Requisito | Obligatorio | Instalación |
-|-----------|-------------|-------------|
-| Kiro | ✅ | [kiro.dev](https://kiro.dev) |
-| Node.js 20+ | ✅ | [nodejs.org](https://nodejs.org) |
-| Git | ✅ | [git-scm.com](https://git-scm.com) |
-| AWS CLI | Para deploy | [Instalar](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) |
-| SAM CLI | Para deploy | [Instalar](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) |
-| Credenciales AWS | Para deploy | [Configurar](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-quickstart.html) |
-| Claude Haiku habilitado | Para deploy | [Model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html) en us-east-1 |
+**Nota:** Si el bucket S3 tiene documentos, vaciarlo primero o usar `--no-prompts` con confirmacion.
 
-## Costo Estimado
+## Costos Estimados
 
-~$1-3 USD por sesión completa (Lambda + S3 + Bedrock Haiku).
-Todo se elimina con `sam delete` (un solo stack de CloudFormation).
+| Servicio | Costo por sesion |
+|----------|-----------------|
+| Lambda | ~$0.01 |
+| S3 | ~$0.01 |
+| Bedrock (Claude Haiku) | ~$0.50-2.00 |
+| **Total** | **~$1-3** |
 
-## Evento
+## Limitaciones
 
-Este proyecto fue creado para el workshop **"Code Faster, Build Smarter"** — AWS Argentina, 4 de junio de 2026.
-
-## Licencia
-
-MIT
+- Sin autenticacion (prototipo/workshop)
+- Historial de conversacion solo en memoria del navegador
+- Documentos de hasta 50 paginas (context window del modelo)
+- Region fija: us-east-1

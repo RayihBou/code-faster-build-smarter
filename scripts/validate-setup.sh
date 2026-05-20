@@ -46,10 +46,10 @@ else
 fi
 
 # Bedrock access
-if aws bedrock list-foundation-models --region us-east-1 --query "modelSummaries[?modelId=='anthropic.claude-3-haiku-20240307-v1:0'].modelId" --output text 2>/dev/null | grep -q "claude"; then
-    echo "✅ Amazon Bedrock accesible (Claude Haiku disponible)"
+if aws bedrock list-foundation-models --region us-east-1 --query "modelSummaries[?modelId=='anthropic.claude-haiku-4-5-20251001-v1:0'].modelId" --output text 2>/dev/null | grep -q "claude"; then
+    echo "✅ Amazon Bedrock accesible (Claude Haiku 4.5 disponible)"
 else
-    echo "⚠️  No se pudo verificar acceso a Bedrock. Asegúrese de habilitar Claude Haiku en la consola de Bedrock (us-east-1)"
+    echo "⚠️  No se pudo verificar acceso a Bedrock. Asegúrese de habilitar Claude Haiku 4.5 en la consola de Bedrock (us-east-1)"
 fi
 
 # Git

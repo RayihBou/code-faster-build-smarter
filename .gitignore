@@ -1,6 +1,31 @@
+# Dependencias
 node_modules/
+
+# Build output de SAM
 .aws-sam/
-samconfig.toml
+
+# Variables de entorno
 .env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Sistema operativo
 .DS_Store
+Thumbs.db
+
+# SAM config (generado por sam deploy --guided)
+samconfig.toml
+
+# Logs
+*.log
+
+# Notas temporales
 memoria.md
+
+# Documentación AI-DLC (no incluir en deploy)
+aidlc-docs/
