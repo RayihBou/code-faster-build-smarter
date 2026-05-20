@@ -334,6 +334,12 @@
       border: 1px solid #f5c6cb;
     }
 
+    .notification.info {
+      background-color: #e2f0fd;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
     @keyframes slideIn {
       from { transform: translateX(100%); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
@@ -503,6 +509,9 @@
         }
 
         showNotification(`"${data.fileName}" subido exitosamente`, 'success');
+        setTimeout(() => {
+          showNotification('Por seguridad, los documentos se eliminan automaticamente despues de 24 horas.', 'info');
+        }, 3000);
 
       } catch (error) {
         showNotification('Error al subir el documento. Intenta de nuevo.', 'error');
