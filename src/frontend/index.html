@@ -349,20 +349,63 @@
 
     /* Responsive */
     @media (max-width: 768px) {
-      .sidebar {
-        width: 100%;
-        max-height: 200px;
-        border-right: none;
-        border-bottom: 1px solid #d5dbdb;
-      }
-
       .main-container {
         flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid #d5dbdb;
+        padding: 12px;
+        overflow-y: visible;
+      }
+
+      .sidebar-header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .sidebar-header h3 {
+        width: 100%;
+        margin-bottom: 4px;
+      }
+
+      .upload-area {
+        flex: 1;
+        min-width: 120px;
+        padding: 12px 8px;
+      }
+
+      .upload-icon { font-size: 18px; }
+      .upload-text { font-size: 11px; }
+      .upload-formats { font-size: 10px; }
+
+      .document-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+
+      .document-item {
+        font-size: 12px;
+        padding: 6px 10px;
+      }
+
+      .chat-container {
+        min-height: 50vh;
       }
 
       .message {
         max-width: 90%;
       }
+
+      .header-title { font-size: 14px; }
+      .header-subtitle { font-size: 11px; }
     }
 
     /* Input file oculto */
