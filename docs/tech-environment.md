@@ -16,29 +16,42 @@
 ```
 Usuario (Browser)
     │
-    ├── GET /           → Lambda sirve frontend HTML
-    ├── POST /upload    → Lambda recibe documento, lo guarda en S3
-    └── POST /chat      → Lambda lee documento de S3, lo inyecta como contexto en Bedrock, retorna respuesta
+    ├── GET /           → FrontendFunction (sin auth) → Sirve HTML con login
+    ├── GET /auth.js    → FrontendFunction (sin auth) → Config de Cognito
+    ├── POST /upload    → ChatbotFunction (JWT auth) → Guarda documento en S3
+    ├── POST /chat      → ChatbotFunction (JWT auth) → Lee doc de S3, invoca Bedrock, retorna respuesta
+    └── GET /documents  → ChatbotFunction (JWT auth) → Lista documentos de la sesión
 ```
 
 ## Servicios AWS Utilizados
 
-- **AWS Lambda** — Una sola función que maneja frontend, upload y chat
-- **Amazon S3** — Un bucket para almacenar los documentos subidos
-- **Amazon Bedrock** — Invocación directa a Claude Haiku para generar respuestas
-- **IAM** — Un role con permisos para S3 y Bedrock
+- **API Gateway HTTP API** — Endpoint HTTPS con Cognito JWT Authorizer
+- **AWS Lambda** — Dos funciones: FrontendFunction (sirve HTML) y ChatbotFunction (API)
+- **Amazon Cognito** — User Pool + App Client para autenticación (self sign-up con email)
+- **Amazon S3** — Bucket para documentos subidos (lifecycle: auto-delete 24h)
+- **Amazon Bedrock** — Invocación con streaming a Claude Haiku 4.5
+- **IAM** — Roles con permisos mínimos para S3 y Bedrock
 - **CloudFormation** — Stack generado por SAM para deploy/cleanup
 
 ## Configuración de Lambda
 
-- Timeout: 30 segundos
-- Memoria: 512 MB
-- Function URL: AuthType NONE (sin autenticación)
-- Runtime: nodejs20.x
+- ChatbotFunction: Timeout 60s, Memoria 512MB, Runtime nodejs20.x, arm64
+- FrontendFunction: Timeout 60s, Memoria 512MB, Runtime nodejs20.x, arm64
+- API Gateway HTTP API con JWT Authorizer (Cognito)
+- Rutas protegidas: /upload, /chat, /documents
+- Rutas públicas: /, /auth.js
+
+## Autenticación
+
+- Cognito User Pool con self sign-up habilitado
+- Registro con email + verificación por código
+- Frontend usa amazon-cognito-identity-js (SDK directo, sin Amplify)
+- Token JWT se envía en header Authorization en cada request
+- API Gateway valida el token automáticamente
 
 ## Región
 
-us-east-1 (Bedrock con Claude Haiku disponible)
+us-east-1 (Bedrock con Claude Haiku 4.5 disponible)
 
 ## Modelo de IA
 
@@ -54,15 +67,18 @@ code-faster-build-smarter/
 ├── .kiro/steering/           ← Reglas AI-DLC
 ├── docs/                     ← Documentos de entrada
 ├── src/
-│   ├── index.js              ← Handler principal (routes: GET, POST /upload, POST /chat)
-│   ├── bedrock.js            ← Módulo de invocación a Bedrock
+│   ├── index.js              ← Handler API (routes: POST /upload, POST /chat, GET /documents)
+│   ├── frontend-handler.js   ← Handler frontend (GET /, GET /auth.js)
+│   ├── bedrock.js            ← Módulo de invocación a Bedrock con streaming
 │   ├── s3.js                 ← Módulo de lectura/escritura S3
+│   ├── text-extractor.js     ← Extracción de texto de documentos
 │   └── frontend/
-│       └── index.html        ← UI del chatbot
-├── template.yaml             ← SAM template
+│       └── index.html        ← UI del chatbot con login Cognito
+├── template.yaml             ← SAM template (API Gateway + Cognito + Lambda + S3)
 ├── package.json
 ├── scripts/
-│   └── validate-setup.sh
+│   ├── validate-setup.sh
+│   └── cleanup.sh
 └── README.md
 ```
 
