@@ -42,9 +42,10 @@ us-east-1 (Bedrock con Claude Haiku disponible)
 
 ## Modelo de IA
 
-- ID: anthropic.claude-haiku-4-5-20251001-v1:0
+- ID: us.anthropic.claude-haiku-4-5-20251001-v1:0 (inference profile, no on-demand directo)
 - Razón: Bajo costo, respuesta rápida, suficiente para Q&A con contexto. Reemplaza a Claude 3 Haiku que fue marcado como Legacy.
 - Context window: 200K tokens (soporta documentos largos)
+- Nota: Claude Haiku 4.5 requiere inference profile (prefijo "us.") — no soporta invocación on-demand directa
 
 ## Estructura del Proyecto (resultado esperado post AI-DLC)
 
