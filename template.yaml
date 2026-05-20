@@ -66,6 +66,7 @@ Resources:
   # Bucket S3 para almacenar documentos subidos
   DocumentsBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -76,6 +77,11 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteAllAfterStackDeletion
+            Status: Enabled
+            ExpirationInDays: 1
 
   # Función Lambda principal del chatbot
   ChatbotFunction:
