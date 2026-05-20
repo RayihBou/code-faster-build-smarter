@@ -381,7 +381,7 @@
         <p style="color:#687078; font-size:13px; margin:6px 0 0;">Impulsado por Amazon Bedrock</p>
       </div>
       <div id="login-form">
-        <input id="login-email" type="email" placeholder="Correo electronico" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
+        <input id="login-email" type="email" placeholder="Correo electronico" autofocus style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
         <input id="login-password" type="password" placeholder="Contrasena temporal" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
         <button id="login-btn" onclick="handleLogin()" style="width:100%; padding:12px; background:#ff9900; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer;">Iniciar sesion</button>
       </div>
@@ -879,6 +879,20 @@
       }
       return originalFetch(url, options);
     };
+
+    // Enter en inputs de login
+    document.getElementById('login-email').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('login-password').focus();
+    });
+    document.getElementById('login-password').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleLogin();
+    });
+    document.getElementById('new-password').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('confirm-password').focus();
+    });
+    document.getElementById('confirm-password').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleNewPassword();
+    });
   </script>
 </body>
 </html>
