@@ -133,7 +133,7 @@ Resources:
           USER_POOL_ID: !Ref UserPool
           USER_POOL_CLIENT_ID: !Ref UserPoolClient
           COGNITO_REGION: !Ref AWS::Region
-          API_ENDPOINT: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
+          AWS_API_REGION: !Ref AWS::Region
       Events:
         Root:
           Type: HttpApi

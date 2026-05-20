@@ -6,18 +6,17 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const { USER_POOL_ID, USER_POOL_CLIENT_ID, COGNITO_REGION, API_ENDPOINT } = process.env;
+const { USER_POOL_ID, USER_POOL_CLIENT_ID, COGNITO_REGION } = process.env;
 
 export async function handler(event) {
   const path = event.rawPath || '/';
 
   if (path === '/auth.js') {
-    // Servir configuración de Cognito como JS
     const config = `window.APP_CONFIG = ${JSON.stringify({
       userPoolId: USER_POOL_ID,
       clientId: USER_POOL_CLIENT_ID,
       region: COGNITO_REGION,
-      apiEndpoint: API_ENDPOINT,
+      apiEndpoint: '',
     })};`;
     return {
       statusCode: 200,
