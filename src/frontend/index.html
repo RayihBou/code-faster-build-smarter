@@ -382,20 +382,14 @@
       </div>
       <div id="login-form">
         <input id="login-email" type="email" placeholder="Correo electronico" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
-        <input id="login-password" type="password" placeholder="Contrasena" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
+        <input id="login-password" type="password" placeholder="Contrasena temporal" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
         <button id="login-btn" onclick="handleLogin()" style="width:100%; padding:12px; background:#ff9900; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer;">Iniciar sesion</button>
-        <p style="text-align:center; margin:16px 0 0; font-size:13px; color:#687078;">No tienes cuenta? <a href="#" onclick="showRegister()" style="color:#ff9900;">Registrarse</a></p>
       </div>
-      <div id="register-form" style="display:none;">
-        <input id="reg-email" type="email" placeholder="Correo electronico" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
-        <input id="reg-password" type="password" placeholder="Contrasena (min 8 caracteres)" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
-        <button onclick="handleRegister()" style="width:100%; padding:12px; background:#ff9900; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer;">Crear cuenta</button>
-        <p style="text-align:center; margin:16px 0 0; font-size:13px; color:#687078;">Ya tienes cuenta? <a href="#" onclick="showLogin()" style="color:#ff9900;">Iniciar sesion</a></p>
-      </div>
-      <div id="confirm-form" style="display:none;">
-        <p style="font-size:13px; color:#687078; margin-bottom:12px;">Ingresa el codigo de verificacion enviado a tu correo:</p>
-        <input id="confirm-code" type="text" placeholder="Codigo de verificacion" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
-        <button onclick="handleConfirm()" style="width:100%; padding:12px; background:#ff9900; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer;">Verificar</button>
+      <div id="new-password-form" style="display:none;">
+        <p style="font-size:13px; color:#687078; margin-bottom:12px;">Configura tu nueva contrasena:</p>
+        <input id="new-password" type="password" placeholder="Nueva contrasena (min 8 caracteres)" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
+        <input id="confirm-password" type="password" placeholder="Confirmar contrasena" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
+        <button onclick="handleNewPassword()" style="width:100%; padding:12px; background:#ff9900; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer;">Configurar contrasena</button>
       </div>
       <p id="login-error" style="color:#d32f2f; font-size:13px; text-align:center; margin:12px 0 0; display:none;"></p>
     </div>
@@ -757,9 +751,10 @@
   </div><!-- /app-container -->
 
   <script>
-    // Autenticación con Cognito
+    // Autenticación con Cognito (solo usuarios creados por admin)
     let currentUser = null;
     let idToken = null;
+    let cognitoUserSession = null;
 
     const poolData = {
       UserPoolId: window.APP_CONFIG.userPoolId,
@@ -768,9 +763,9 @@
     const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
 
     // Verificar sesión existente
-    const cognitoUser = userPool.getCurrentUser();
-    if (cognitoUser) {
-      cognitoUser.getSession((err, session) => {
+    const existingUser = userPool.getCurrentUser();
+    if (existingUser) {
+      existingUser.getSession((err, session) => {
         if (!err && session.isValid()) {
           idToken = session.getIdToken().getJwtToken();
           showApp();
@@ -778,24 +773,11 @@
       });
     }
 
-    function showLogin() {
-      document.getElementById('login-form').style.display = 'block';
-      document.getElementById('register-form').style.display = 'none';
-      document.getElementById('confirm-form').style.display = 'none';
-      document.getElementById('login-error').style.display = 'none';
-    }
-
-    function showRegister() {
-      document.getElementById('login-form').style.display = 'none';
-      document.getElementById('register-form').style.display = 'block';
-      document.getElementById('confirm-form').style.display = 'none';
-      document.getElementById('login-error').style.display = 'none';
-    }
-
     function showError(msg) {
       const el = document.getElementById('login-error');
       el.textContent = msg;
       el.style.display = 'block';
+      el.style.color = '#d32f2f';
     }
 
     function showApp() {
@@ -809,56 +791,42 @@
       if (!email || !password) return showError('Completa todos los campos');
 
       const authDetails = new AmazonCognitoIdentity.AuthenticationDetails({ Username: email, Password: password });
-      const cogUser = new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool });
+      currentUser = new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool });
 
-      cogUser.authenticateUser(authDetails, {
+      currentUser.authenticateUser(authDetails, {
         onSuccess: (session) => {
           idToken = session.getIdToken().getJwtToken();
           showApp();
         },
         onFailure: (err) => {
-          if (err.code === 'UserNotConfirmedException') {
-            currentUser = cogUser;
-            document.getElementById('login-form').style.display = 'none';
-            document.getElementById('confirm-form').style.display = 'block';
-          } else {
-            showError(err.message || 'Error al iniciar sesion');
-          }
+          showError(err.message || 'Error al iniciar sesion');
         },
-        newPasswordRequired: () => {
-          showError('Debes cambiar tu contrasena. Contacta al administrador.');
+        newPasswordRequired: (userAttributes) => {
+          // Primer login: mostrar formulario de nueva contraseña
+          cognitoUserSession = userAttributes;
+          document.getElementById('login-form').style.display = 'none';
+          document.getElementById('new-password-form').style.display = 'block';
+          document.getElementById('login-error').style.display = 'none';
         },
       });
     }
 
-    function handleRegister() {
-      const email = document.getElementById('reg-email').value.trim();
-      const password = document.getElementById('reg-password').value;
-      if (!email || !password) return showError('Completa todos los campos');
+    function handleNewPassword() {
+      const newPass = document.getElementById('new-password').value;
+      const confirmPass = document.getElementById('confirm-password').value;
 
-      const attrs = [new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'email', Value: email })];
+      if (!newPass || !confirmPass) return showError('Completa todos los campos');
+      if (newPass !== confirmPass) return showError('Las contrasenas no coinciden');
+      if (newPass.length < 8) return showError('La contrasena debe tener al menos 8 caracteres');
 
-      userPool.signUp(email, password, attrs, null, (err, result) => {
-        if (err) return showError(err.message || 'Error al registrar');
-        currentUser = result.user;
-        document.getElementById('register-form').style.display = 'none';
-        document.getElementById('confirm-form').style.display = 'block';
-        document.getElementById('login-error').style.display = 'none';
-      });
-    }
-
-    function handleConfirm() {
-      const code = document.getElementById('confirm-code').value.trim();
-      if (!code) return showError('Ingresa el codigo');
-
-      const email = document.getElementById('reg-email').value.trim() || document.getElementById('login-email').value.trim();
-      const cogUser = new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool });
-
-      cogUser.confirmRegistration(code, true, (err) => {
-        if (err) return showError(err.message || 'Codigo invalido');
-        showLogin();
-        showError('Cuenta verificada. Inicia sesion.');
-        document.getElementById('login-error').style.color = '#2e7d32';
+      currentUser.completeNewPasswordChallenge(newPass, {}, {
+        onSuccess: (session) => {
+          idToken = session.getIdToken().getJwtToken();
+          showApp();
+        },
+        onFailure: (err) => {
+          showError(err.message || 'Error al configurar contrasena');
+        },
       });
     }
 

@@ -2,6 +2,11 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Chatbot empresarial con Amazon Bedrock - Autenticacion con Cognito
 
+Parameters:
+  AdminEmail:
+    Type: String
+    Description: Email del usuario que tendra acceso al chatbot
+
 Globals:
   Function:
     Timeout: 60
@@ -31,6 +36,8 @@ Resources:
         - Name: email
           Required: true
           Mutable: true
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
 
   # Cognito App Client
   UserPoolClient:
@@ -43,6 +50,18 @@ Resources:
         - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
         - ALLOW_USER_SRP_AUTH
+
+  # Crear usuario admin automáticamente
+  AdminUser:
+    Type: AWS::Cognito::UserPoolUser
+    Properties:
+      UserPoolId: !Ref UserPool
+      Username: !Ref AdminEmail
+      UserAttributes:
+        - Name: email
+          Value: !Ref AdminEmail
+      DesiredDeliveryMediums:
+        - EMAIL
 
   # Bucket S3 para documentos
   DocumentsBucket:
@@ -73,8 +92,6 @@ Resources:
         DefaultAuthorizer: CognitoAuthorizer
         Authorizers:
           CognitoAuthorizer:
-            AuthorizationScopes:
-              - openid
             IdentitySource: $request.header.Authorization
             JwtConfiguration:
               issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
