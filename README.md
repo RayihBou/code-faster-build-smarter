@@ -1,111 +1,126 @@
-# Chatbot Empresarial con Contexto Documental
+# Code Faster, Build Smarter
 
-Chatbot serverless que permite subir documentos (PDF, Word, Excel, TXT, Markdown) y hacer preguntas en lenguaje natural sobre su contenido. Utiliza Amazon Bedrock (Claude Haiku 4.5) para generar respuestas basadas exclusivamente en el documento.
+Chatbot empresarial con Amazon Bedrock que permite subir documentos y hacer preguntas en lenguaje natural sobre su contenido. Protegido con autenticacion Cognito.
 
 ## Arquitectura
 
 ```
 Usuario (Browser)
     |
-    +-- GET /           -> Lambda sirve frontend HTML
-    +-- POST /upload    -> Lambda recibe documento, lo guarda en S3
-    +-- POST /chat      -> Lambda lee documento de S3, invoca Bedrock, retorna respuesta
-    +-- GET /documents  -> Lambda lista documentos de la sesion
+    +-- GET /           -> FrontendFunction (publica) -> HTML con login
+    +-- GET /auth.js    -> FrontendFunction (publica) -> Config Cognito
+    +-- POST /upload    -> ChatbotFunction (JWT auth) -> Guarda doc en S3
+    +-- POST /chat      -> ChatbotFunction (JWT auth) -> Invoca Bedrock, retorna respuesta
+    +-- GET /documents  -> ChatbotFunction (JWT auth) -> Lista documentos
 ```
 
 **Servicios AWS:**
-- AWS Lambda (Function URL, sin API Gateway)
-- Amazon S3 (almacenamiento de documentos)
-- Amazon Bedrock (Claude Haiku 4.5 para generacion de respuestas)
+- API Gateway HTTP API (con Cognito JWT Authorizer)
+- AWS Lambda (2 funciones: frontend + API)
+- Amazon Cognito (User Pool, autenticacion por email)
+- Amazon S3 (documentos, auto-delete 24h)
+- Amazon Bedrock (Claude Haiku 4.5 via inference profile)
+- CloudFormation (stack completo, eliminable en un comando)
 
 ## Requisitos Previos
 
-1. **AWS CLI** configurado con credenciales validas
-2. **AWS SAM CLI** instalado ([instrucciones](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html))
-3. **Node.js 20.x** instalado
-4. **Amazon Bedrock** con acceso habilitado al modelo Claude Haiku 4.5 en us-east-1
+| Requisito | Instalacion |
+|-----------|-------------|
+| AWS CLI v2 | [Instalar](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) |
+| SAM CLI | [Instalar](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) |
+| Node.js 20+ | [nodejs.org](https://nodejs.org) |
+| Credenciales AWS | `aws configure` o `aws sso login` |
+| Claude Haiku 4.5 | Habilitar en Bedrock Model Access (us-east-1) |
 
-### Habilitar Claude Haiku 4.5 en Bedrock
+### Validar prerequisites
 
-1. Ir a la consola de AWS -> Amazon Bedrock -> Model access
-2. Solicitar acceso a "Anthropic - Claude Haiku 4.5"
-3. Esperar aprobacion (generalmente inmediata)
+```bash
+chmod +x scripts/validate-setup.sh
+./scripts/validate-setup.sh
+```
 
 ## Deploy
 
 ```bash
-# Construir el proyecto
-sam build
-
-# Desplegar (primera vez, interactivo)
-sam deploy --guided
+chmod +x scripts/deploy.sh
+./scripts/deploy.sh
 ```
 
-Durante el deploy guiado:
-- Stack name: `code-faster-chatbot`
-- Region: `us-east-1`
-- Confirm changes: Yes
-- Allow SAM CLI IAM role creation: Yes
-- ChatbotFunction Function Url without auth: Yes
+El script solo te pide tu correo electronico. Con ese email:
+1. Se crea un usuario en Cognito automaticamente
+2. Recibes una contrasena temporal por email
+3. Al primer login, configuras tu contrasena definitiva
 
-Al finalizar, el output muestra la URL del chatbot.
+Al finalizar el deploy, el output muestra la URL de la aplicacion.
 
 ## Uso
 
-1. Acceder a la URL del output (ChatbotUrl)
-2. Subir un documento (PDF, Word, Excel, TXT o Markdown)
-3. Seleccionar el documento en el panel lateral
-4. Escribir preguntas en el chat
+1. Abrir la URL del output (AppUrl)
+2. Iniciar sesion con el email y la contrasena temporal recibida por correo
+3. Configurar tu nueva contrasena
+4. Subir un documento (PDF, Word, Excel, TXT, Markdown)
+5. Hacer preguntas en lenguaje natural sobre el documento
 
 ## Formatos Soportados
 
 | Formato | Extensiones |
 |---------|-------------|
 | PDF | .pdf |
-| Word | .docx, .doc |
+| Word | .docx |
 | Excel | .xlsx, .xls |
 | Texto plano | .txt |
 | Markdown | .md |
 
-Tamano maximo: 20 MB por archivo.
+Tamano maximo: 20 MB. Documentos se eliminan automaticamente despues de 24 horas.
+
+## Seguridad
+
+- Autenticacion obligatoria con Cognito (solo usuarios creados por admin)
+- JWT Authorizer en API Gateway (todas las rutas de API protegidas)
+- Sin self sign-up (solo el email definido en el deploy tiene acceso)
+- Documentos auto-eliminados a las 24h (S3 Lifecycle)
+- Bucket S3 con cifrado AES-256 y acceso publico bloqueado
 
 ## Estructura del Proyecto
 
 ```
 ├── src/
-│   ├── index.js              # Handler principal (router)
-│   ├── bedrock.js            # Modulo de invocacion a Bedrock
-│   ├── s3.js                 # Modulo de operaciones S3
+│   ├── index.js              # Handler API (upload, chat, documents)
+│   ├── frontend-handler.js   # Handler frontend (HTML + config Cognito)
+│   ├── bedrock.js            # Invocacion a Bedrock con streaming
+│   ├── s3.js                 # Operaciones S3
 │   ├── text-extractor.js     # Extraccion de texto multi-formato
 │   └── frontend/
-│       └── index.html        # Interfaz web del chatbot
-├── template.yaml             # SAM template (IaC)
-├── package.json              # Dependencias del proyecto
+│       └── index.html        # UI con login Cognito + chat
+├── template.yaml             # SAM template (API Gateway + Cognito + Lambda + S3)
+├── samconfig.toml            # Config de deploy pre-configurada
+├── package.json
+├── scripts/
+│   ├── deploy.sh             # Deploy (solo pide email)
+│   ├── cleanup.sh            # Elimina todo (vacia S3 + delete stack)
+│   └── validate-setup.sh     # Valida prerequisites
 └── README.md
 ```
 
 ## Eliminacion
 
-Para eliminar todos los recursos creados:
-
 ```bash
 ./scripts/cleanup.sh
 ```
 
-Este script vacía el bucket S3 y elimina el stack de CloudFormation sin errores. No usar `sam delete` directamente (falla si el bucket tiene objetos).
+Vacia el bucket S3 y elimina el stack de CloudFormation completamente en un solo comando.
 
 ## Costos Estimados
 
 | Servicio | Costo por sesion |
 |----------|-----------------|
 | Lambda | ~$0.01 |
+| API Gateway | ~$0.01 |
 | S3 | ~$0.01 |
-| Bedrock (Claude Haiku) | ~$0.50-2.00 |
-| **Total** | **~$1-3** |
+| Cognito | Gratis (< 50K MAU) |
+| Bedrock (Claude Haiku 4.5) | ~$0.50-2.00 |
+| **Total** | **~$1-3 USD** |
 
-## Limitaciones
+## Workshop
 
-- Sin autenticacion (prototipo/workshop)
-- Historial de conversacion solo en memoria del navegador
-- Documentos de hasta 50 paginas (context window del modelo)
-- Region fija: us-east-1
+Este proyecto fue creado para el workshop **"Code Faster, Build Smarter"** — AWS Argentina, 4 de junio de 2026. Construido usando la metodologia [AI-DLC](https://aws.amazon.com/blogs/devops/ai-driven-development-life-cycle/) con [Kiro IDE](https://kiro.dev).
