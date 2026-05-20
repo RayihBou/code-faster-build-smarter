@@ -5,13 +5,14 @@ Chatbot empresarial con Amazon Bedrock que permite subir documentos y hacer preg
 ## Arquitectura
 
 ```
-Usuario (Browser)
+Usuario (Browser/Movil)
     |
-    +-- GET /           -> FrontendFunction (publica) -> HTML con login
-    +-- GET /auth.js    -> FrontendFunction (publica) -> Config Cognito
-    +-- POST /upload    -> ChatbotFunction (JWT auth) -> Guarda doc en S3
-    +-- POST /chat      -> ChatbotFunction (JWT auth) -> Invoca Bedrock, retorna respuesta
-    +-- GET /documents  -> ChatbotFunction (JWT auth) -> Lista documentos
+    +-- GET /            -> FrontendFunction (publica) -> HTML con login
+    +-- GET /auth.js     -> FrontendFunction (publica) -> Config Cognito
+    +-- POST /upload     -> ChatbotFunction (JWT auth) -> Guarda doc en S3
+    +-- POST /chat       -> ChatbotFunction (JWT auth) -> Invoca Bedrock con contexto del doc
+    +-- POST /chat-image -> ChatbotFunction (JWT auth) -> Invoca Bedrock con vision (imagen)
+    +-- GET /documents   -> ChatbotFunction (JWT auth) -> Lista documentos
 ```
 
 **Servicios AWS:**
@@ -58,10 +59,18 @@ Al finalizar el deploy, el output muestra la URL de la aplicacion.
 1. Abrir la URL del output (AppUrl)
 2. Iniciar sesion con el email y la contrasena temporal recibida por correo
 3. Configurar tu nueva contrasena
-4. Subir un documento (PDF, Word, Excel, TXT, Markdown)
-5. Hacer preguntas en lenguaje natural sobre el documento
+4. Subir un documento o tomar una foto de un documento
+5. Hacer preguntas en lenguaje natural
+
+### Modos de entrada
+
+- **Documentos:** Subir PDF, Word, Excel, TXT o Markdown. El chatbot extrae el texto y responde con base en el contenido.
+- **Camara (movil):** Tomar foto de un documento fisico. Claude Haiku 4.5 analiza la imagen directamente con vision y responde preguntas sobre lo que ve.
+- **Imagen (desktop):** Seleccionar una imagen guardada para analisis.
 
 ## Formatos Soportados
+
+**Documentos:**
 
 | Formato | Extensiones |
 |---------|-------------|
@@ -71,7 +80,17 @@ Al finalizar el deploy, el output muestra la URL de la aplicacion.
 | Texto plano | .txt |
 | Markdown | .md |
 
-Tamano maximo: 20 MB. Documentos se eliminan automaticamente despues de 24 horas.
+**Imagenes (camara/archivo):**
+
+| Formato | Extensiones |
+|---------|-------------|
+| JPEG | .jpg, .jpeg |
+| PNG | .png |
+| WebP | .webp |
+| GIF | .gif |
+
+Tamano maximo documentos: 20 MB. Documentos se eliminan automaticamente despues de 24 horas.
+Imagenes no se almacenan en S3 (se envian directamente al modelo).
 
 ## Seguridad
 
