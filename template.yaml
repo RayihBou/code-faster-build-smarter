@@ -1,16 +1,68 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Chatbot empresarial con contexto documental - Amazon Bedrock (Claude Haiku)
+Description: Chatbot empresarial con contexto documental - Amazon Bedrock (Claude Haiku 4.5) con Cognito
 
 Globals:
   Function:
-    Timeout: 30
+    Timeout: 60
     MemorySize: 512
     Runtime: nodejs20.x
     Architectures:
       - arm64
 
 Resources:
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${AWS::StackName}-users
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: false
+          RequireLowercase: false
+          RequireNumbers: false
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+
+  # Cognito App Client
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub ${AWS::StackName}-client
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlows:
+        - implicit
+      AllowedOAuthScopes:
+        - openid
+        - email
+      AllowedOAuthFlowsUserPoolClient: true
+      CallbackURLs:
+        - http://localhost:3000
+      LogoutURLs:
+        - http://localhost:3000
+
+  # Cognito Domain para Hosted UI
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub ${AWS::StackName}-${AWS::AccountId}
+      UserPoolId: !Ref UserPool
+
   # Bucket S3 para almacenar documentos subidos
   DocumentsBucket:
     Type: AWS::S3::Bucket
@@ -32,9 +84,13 @@ Resources:
       Handler: src/index.handler
       FunctionUrlConfig:
         AuthType: NONE
+        InvokeMode: RESPONSE_STREAM
       Environment:
         Variables:
           BUCKET_NAME: !Ref DocumentsBucket
+          USER_POOL_ID: !Ref UserPool
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+          COGNITO_REGION: !Ref AWS::Region
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref DocumentsBucket
@@ -54,3 +110,12 @@ Outputs:
   DocumentsBucketName:
     Description: Nombre del bucket S3 para documentos
     Value: !Ref DocumentsBucket
+  UserPoolId:
+    Description: ID del User Pool de Cognito
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Description: ID del App Client de Cognito
+    Value: !Ref UserPoolClient
+  CognitoDomain:
+    Description: Dominio de Cognito para login
+    Value: !Sub https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com

@@ -1,7 +1,7 @@
-// Módulo de invocación a Amazon Bedrock (Claude Haiku 4.5)
+// Módulo de invocación a Amazon Bedrock (Claude Haiku 4.5) con streaming
 // Genera respuestas basadas exclusivamente en el contexto del documento
 
-import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
+import { BedrockRuntimeClient, InvokeModelWithResponseStreamCommand } from '@aws-sdk/client-bedrock-runtime';
 
 const bedrockClient = new BedrockRuntimeClient({ region: 'us-east-1' });
 const MODEL_ID = 'us.anthropic.claude-haiku-4-5-20251001-v1:0';
@@ -19,14 +19,13 @@ Reglas estrictas:
 6. Sé conciso pero completo en tus respuestas.`;
 
 /**
- * Genera una respuesta del chatbot usando Bedrock
+ * Genera una respuesta del chatbot usando Bedrock con streaming
  * @param {string} documentText - Texto completo del documento como contexto
  * @param {string} userMessage - Pregunta del usuario
  * @param {Array<{role: string, content: string}>} conversationHistory - Historial de la conversación
- * @returns {Promise<string>} Respuesta generada por el modelo
+ * @returns {AsyncGenerator<string>} Stream de chunks de texto
  */
-export async function generateResponse(documentText, userMessage, conversationHistory = []) {
-  // Construir los mensajes con el contexto del documento
+export async function* generateResponseStream(documentText, userMessage, conversationHistory = []) {
   const messages = buildMessages(documentText, userMessage, conversationHistory);
 
   const requestBody = {
@@ -36,7 +35,7 @@ export async function generateResponse(documentText, userMessage, conversationHi
     messages,
   };
 
-  const command = new InvokeModelCommand({
+  const command = new InvokeModelWithResponseStreamCommand({
     modelId: MODEL_ID,
     contentType: 'application/json',
     accept: 'application/json',
@@ -45,13 +44,15 @@ export async function generateResponse(documentText, userMessage, conversationHi
 
   try {
     const response = await bedrockClient.send(command);
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
 
-    if (responseBody.content && responseBody.content.length > 0) {
-      return responseBody.content[0].text;
+    for await (const event of response.body) {
+      if (event.chunk) {
+        const chunk = JSON.parse(new TextDecoder().decode(event.chunk.bytes));
+        if (chunk.type === 'content_block_delta' && chunk.delta?.text) {
+          yield chunk.delta.text;
+        }
+      }
     }
-
-    return 'No pude generar una respuesta. Por favor intenta reformular tu pregunta.';
   } catch (error) {
     console.error('Error al invocar Bedrock:', error);
 
@@ -69,7 +70,6 @@ export async function generateResponse(documentText, userMessage, conversationHi
 
 /**
  * Construye el array de mensajes para la API de Claude
- * Incluye el contexto del documento en el primer mensaje del usuario
  * @param {string} documentText - Texto del documento
  * @param {string} userMessage - Mensaje actual del usuario
  * @param {Array<{role: string, content: string}>} history - Historial previo
@@ -78,21 +78,12 @@ export async function generateResponse(documentText, userMessage, conversationHi
 function buildMessages(documentText, userMessage, history) {
   const messages = [];
 
-  // Incluir historial de conversación previo
   for (const msg of history) {
-    messages.push({
-      role: msg.role,
-      content: msg.content,
-    });
+    messages.push({ role: msg.role, content: msg.content });
   }
 
-  // Mensaje actual del usuario con el contexto del documento
   const contextualMessage = `<documento>\n${documentText}\n</documento>\n\nPregunta del usuario: ${userMessage}`;
-
-  messages.push({
-    role: 'user',
-    content: contextualMessage,
-  });
+  messages.push({ role: 'user', content: contextualMessage });
 
   return messages;
 }

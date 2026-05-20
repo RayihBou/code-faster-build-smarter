@@ -579,8 +579,8 @@
           return;
         }
 
-        // Mostrar respuesta del asistente
-        addMessage(data.response, 'assistant');
+        // Mostrar respuesta con efecto de typing
+        await addMessageWithTyping(data.response, 'assistant');
 
         // Actualizar historial
         state.conversationHistory.push(
@@ -610,6 +610,25 @@
       messageEl.textContent = text;
       chatMessages.appendChild(messageEl);
       chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Agregar mensaje con efecto de typing progresivo
+    async function addMessageWithTyping(text, role) {
+      const welcome = chatMessages.querySelector('.welcome-message');
+      if (welcome) welcome.remove();
+
+      const messageEl = document.createElement('div');
+      messageEl.className = `message ${role}`;
+      chatMessages.appendChild(messageEl);
+
+      const words = text.split(' ');
+      let displayed = '';
+      for (let i = 0; i < words.length; i++) {
+        displayed += (i === 0 ? '' : ' ') + words[i];
+        messageEl.textContent = displayed;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        await new Promise(r => setTimeout(r, 30));
+      }
     }
 
     // Agregar mensaje del sistema

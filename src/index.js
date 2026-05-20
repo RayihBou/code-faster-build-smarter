@@ -6,7 +6,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { uploadDocument, getDocument, listDocuments } from './s3.js';
 import { extractText, isValidFormat, MAX_FILE_SIZE } from './text-extractor.js';
-import { generateResponse } from './bedrock.js';
+import { generateResponseStream } from './bedrock.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -124,10 +124,10 @@ async function handleUpload(event) {
 }
 
 /**
- * Maneja las solicitudes de chat
- * Lee el documento de S3, extrae texto e invoca Bedrock
+ * Maneja las solicitudes de chat con streaming (Server-Sent Events)
+ * Lee el documento de S3, extrae texto e invoca Bedrock con streaming
  * @param {object} event - Evento HTTP con la pregunta
- * @returns {object} Respuesta del chatbot
+ * @returns {object} Respuesta del chatbot en streaming
  */
 async function handleChat(event) {
   const body = JSON.parse(event.isBase64Encoded
@@ -151,10 +151,13 @@ async function handleChat(event) {
   // Extraer texto del documento
   const documentText = await extractText(fileBuffer, fileName);
 
-  // Generar respuesta con Bedrock
-  const response = await generateResponse(documentText, message, history || []);
+  // Generar respuesta con streaming
+  let fullResponse = '';
+  for await (const chunk of generateResponseStream(documentText, message, history || [])) {
+    fullResponse += chunk;
+  }
 
-  return jsonResponse(200, { response });
+  return jsonResponse(200, { response: fullResponse });
 }
 
 /**
