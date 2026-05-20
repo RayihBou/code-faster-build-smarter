@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Chatbot empresarial con contexto documental - Amazon Bedrock (Claude Haiku 4.5) con Cognito
+Description: Chatbot empresarial con Amazon Bedrock - Autenticacion con Cognito
 
 Globals:
   Function:
@@ -43,27 +43,8 @@ Resources:
         - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
         - ALLOW_USER_SRP_AUTH
-      SupportedIdentityProviders:
-        - COGNITO
-      AllowedOAuthFlows:
-        - implicit
-      AllowedOAuthScopes:
-        - openid
-        - email
-      AllowedOAuthFlowsUserPoolClient: true
-      CallbackURLs:
-        - http://localhost:3000
-      LogoutURLs:
-        - http://localhost:3000
 
-  # Cognito Domain para Hosted UI
-  UserPoolDomain:
-    Type: AWS::Cognito::UserPoolDomain
-    Properties:
-      Domain: !Sub ${AWS::StackName}-${AWS::AccountId}
-      UserPoolId: !Ref UserPool
-
-  # Bucket S3 para almacenar documentos subidos
+  # Bucket S3 para documentos
   DocumentsBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
@@ -79,23 +60,57 @@ Resources:
         RestrictPublicBuckets: true
       LifecycleConfiguration:
         Rules:
-          - Id: DeleteAllAfterStackDeletion
+          - Id: AutoDeleteAfter24h
             Status: Enabled
             ExpirationInDays: 1
 
-  # Función Lambda principal del chatbot
+  # HTTP API Gateway con Cognito Authorizer
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: $default
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            AuthorizationScopes:
+              - openid
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
+              audience:
+                - !Ref UserPoolClient
+
+  # Lambda del chatbot
   ChatbotFunction:
     Type: AWS::Serverless::Function
     Properties:
       Handler: src/index.handler
-      FunctionUrlConfig:
-        AuthType: NONE
       Environment:
         Variables:
           BUCKET_NAME: !Ref DocumentsBucket
           USER_POOL_ID: !Ref UserPool
           USER_POOL_CLIENT_ID: !Ref UserPoolClient
           COGNITO_REGION: !Ref AWS::Region
+      Events:
+        Upload:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /upload
+            Method: POST
+        Chat:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /chat
+            Method: POST
+        Documents:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /documents
+            Method: GET
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref DocumentsBucket
@@ -108,19 +123,45 @@ Resources:
                 - arn:aws:bedrock:us-east-1:*:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0
                 - arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0
 
+  # Lambda para servir el frontend (sin auth)
+  FrontendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/frontend-handler.handler
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+          COGNITO_REGION: !Ref AWS::Region
+          API_ENDPOINT: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
+      Events:
+        Root:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        AuthJs:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /auth.js
+            Method: GET
+            Auth:
+              Authorizer: NONE
+
 Outputs:
-  ChatbotUrl:
-    Description: URL del chatbot
-    Value: !GetAtt ChatbotFunctionUrl.FunctionUrl
-  DocumentsBucketName:
-    Description: Nombre del bucket S3 para documentos
-    Value: !Ref DocumentsBucket
+  AppUrl:
+    Description: URL de la aplicacion
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
   UserPoolId:
-    Description: ID del User Pool de Cognito
+    Description: Cognito User Pool ID
     Value: !Ref UserPool
   UserPoolClientId:
-    Description: ID del App Client de Cognito
+    Description: Cognito App Client ID
     Value: !Ref UserPoolClient
-  CognitoDomain:
-    Description: Dominio de Cognito para login
-    Value: !Sub https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com
+  DocumentsBucketName:
+    Description: Bucket S3 para documentos
+    Value: !Ref DocumentsBucket

@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chatbot Empresarial - Amazon Bedrock</title>
   <link rel="icon" href="https://a0.awsstatic.com/libra-css/images/site/fav/favicon.ico">
+  <script src="/auth.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.16/dist/amazon-cognito-identity.min.js"></script>
   <style>
     * {
       margin: 0;
@@ -370,6 +372,37 @@
   </style>
 </head>
 <body>
+  <!-- Pantalla de Login -->
+  <div id="login-screen" style="display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f4f6f8;">
+    <div style="background:#fff; padding:40px; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.1); width:100%; max-width:380px;">
+      <div style="text-align:center; margin-bottom:24px;">
+        <img src="https://assets.rayihbou.people.aws.dev/aws-logo-dark.svg" alt="AWS" style="height:32px; margin-bottom:16px;">
+        <h2 style="color:#232f3e; font-size:20px; margin:0;">Chatbot Empresarial</h2>
+        <p style="color:#687078; font-size:13px; margin:6px 0 0;">Impulsado por Amazon Bedrock</p>
+      </div>
+      <div id="login-form">
+        <input id="login-email" type="email" placeholder="Correo electronico" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
+        <input id="login-password" type="password" placeholder="Contrasena" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
+        <button id="login-btn" onclick="handleLogin()" style="width:100%; padding:12px; background:#ff9900; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer;">Iniciar sesion</button>
+        <p style="text-align:center; margin:16px 0 0; font-size:13px; color:#687078;">No tienes cuenta? <a href="#" onclick="showRegister()" style="color:#ff9900;">Registrarse</a></p>
+      </div>
+      <div id="register-form" style="display:none;">
+        <input id="reg-email" type="email" placeholder="Correo electronico" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
+        <input id="reg-password" type="password" placeholder="Contrasena (min 8 caracteres)" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
+        <button onclick="handleRegister()" style="width:100%; padding:12px; background:#ff9900; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer;">Crear cuenta</button>
+        <p style="text-align:center; margin:16px 0 0; font-size:13px; color:#687078;">Ya tienes cuenta? <a href="#" onclick="showLogin()" style="color:#ff9900;">Iniciar sesion</a></p>
+      </div>
+      <div id="confirm-form" style="display:none;">
+        <p style="font-size:13px; color:#687078; margin-bottom:12px;">Ingresa el codigo de verificacion enviado a tu correo:</p>
+        <input id="confirm-code" type="text" placeholder="Codigo de verificacion" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #d5dbdb; border-radius:6px; font-size:14px; box-sizing:border-box;">
+        <button onclick="handleConfirm()" style="width:100%; padding:12px; background:#ff9900; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer;">Verificar</button>
+      </div>
+      <p id="login-error" style="color:#d32f2f; font-size:13px; text-align:center; margin:12px 0 0; display:none;"></p>
+    </div>
+  </div>
+
+  <!-- App principal (oculta hasta login) -->
+  <div id="app-container" style="display:none;">
   <!-- Header -->
   <header class="header">
     <img class="header-logo" src="https://assets.rayihbou.people.aws.dev/aws-logo.svg" alt="AWS" style="height:28px;">
@@ -720,6 +753,123 @@
 
     // Inicializar
     initSession();
+  </script>
+  </div><!-- /app-container -->
+
+  <script>
+    // Autenticación con Cognito
+    let currentUser = null;
+    let idToken = null;
+
+    const poolData = {
+      UserPoolId: window.APP_CONFIG.userPoolId,
+      ClientId: window.APP_CONFIG.clientId,
+    };
+    const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+
+    // Verificar sesión existente
+    const cognitoUser = userPool.getCurrentUser();
+    if (cognitoUser) {
+      cognitoUser.getSession((err, session) => {
+        if (!err && session.isValid()) {
+          idToken = session.getIdToken().getJwtToken();
+          showApp();
+        }
+      });
+    }
+
+    function showLogin() {
+      document.getElementById('login-form').style.display = 'block';
+      document.getElementById('register-form').style.display = 'none';
+      document.getElementById('confirm-form').style.display = 'none';
+      document.getElementById('login-error').style.display = 'none';
+    }
+
+    function showRegister() {
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('register-form').style.display = 'block';
+      document.getElementById('confirm-form').style.display = 'none';
+      document.getElementById('login-error').style.display = 'none';
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('login-error');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    function showApp() {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app-container').style.display = 'block';
+    }
+
+    function handleLogin() {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!email || !password) return showError('Completa todos los campos');
+
+      const authDetails = new AmazonCognitoIdentity.AuthenticationDetails({ Username: email, Password: password });
+      const cogUser = new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool });
+
+      cogUser.authenticateUser(authDetails, {
+        onSuccess: (session) => {
+          idToken = session.getIdToken().getJwtToken();
+          showApp();
+        },
+        onFailure: (err) => {
+          if (err.code === 'UserNotConfirmedException') {
+            currentUser = cogUser;
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('confirm-form').style.display = 'block';
+          } else {
+            showError(err.message || 'Error al iniciar sesion');
+          }
+        },
+        newPasswordRequired: () => {
+          showError('Debes cambiar tu contrasena. Contacta al administrador.');
+        },
+      });
+    }
+
+    function handleRegister() {
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      if (!email || !password) return showError('Completa todos los campos');
+
+      const attrs = [new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'email', Value: email })];
+
+      userPool.signUp(email, password, attrs, null, (err, result) => {
+        if (err) return showError(err.message || 'Error al registrar');
+        currentUser = result.user;
+        document.getElementById('register-form').style.display = 'none';
+        document.getElementById('confirm-form').style.display = 'block';
+        document.getElementById('login-error').style.display = 'none';
+      });
+    }
+
+    function handleConfirm() {
+      const code = document.getElementById('confirm-code').value.trim();
+      if (!code) return showError('Ingresa el codigo');
+
+      const email = document.getElementById('reg-email').value.trim() || document.getElementById('login-email').value.trim();
+      const cogUser = new AmazonCognitoIdentity.CognitoUser({ Username: email, Pool: userPool });
+
+      cogUser.confirmRegistration(code, true, (err) => {
+        if (err) return showError(err.message || 'Codigo invalido');
+        showLogin();
+        showError('Cuenta verificada. Inicia sesion.');
+        document.getElementById('login-error').style.color = '#2e7d32';
+      });
+    }
+
+    // Override fetch para agregar token de auth
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+      if (idToken && !url.includes('/auth.js')) {
+        options.headers = { ...options.headers, Authorization: `Bearer ${idToken}` };
+      }
+      return originalFetch(url, options);
+    };
   </script>
 </body>
 </html>

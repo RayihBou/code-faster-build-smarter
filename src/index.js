@@ -1,31 +1,18 @@
-// Handler principal de la función Lambda
-// Maneja todas las rutas: GET /, POST /upload, POST /chat, GET /documents
+// Handler principal de la función Lambda - API del chatbot
+// Maneja rutas: POST /upload, POST /chat, GET /documents
 
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import { uploadDocument, getDocument, listDocuments } from './s3.js';
 import { extractText, isValidFormat, MAX_FILE_SIZE } from './text-extractor.js';
 import { generateResponseStream } from './bedrock.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 /**
  * Handler principal de Lambda - enruta según método y path
- * @param {object} event - Evento de Lambda Function URL
- * @returns {object} Respuesta HTTP
  */
 export async function handler(event) {
   const method = event.requestContext?.http?.method || 'GET';
   const path = event.rawPath || '/';
 
   try {
-    // Enrutamiento de solicitudes
-    if (method === 'GET' && path === '/') {
-      return serveFrontend();
-    }
-
     if (method === 'POST' && path === '/upload') {
       return await handleUpload(event);
     }
@@ -38,28 +25,12 @@ export async function handler(event) {
       return await handleListDocuments(event);
     }
 
-    // Ruta no encontrada
     return jsonResponse(404, { error: 'Ruta no encontrada' });
 
   } catch (error) {
     console.error('Error en handler:', error);
     return jsonResponse(500, { error: error.message || 'Error interno del servidor' });
   }
-}
-
-/**
- * Sirve el frontend HTML
- * @returns {object} Respuesta con el HTML del frontend
- */
-function serveFrontend() {
-  const htmlPath = join(__dirname, 'frontend', 'index.html');
-  const html = readFileSync(htmlPath, 'utf-8');
-
-  return {
-    statusCode: 200,
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
-    body: html,
-  };
 }
 
 /**
