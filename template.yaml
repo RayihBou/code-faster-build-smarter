@@ -90,7 +90,6 @@ Resources:
       Handler: src/index.handler
       FunctionUrlConfig:
         AuthType: NONE
-        InvokeMode: RESPONSE_STREAM
       Environment:
         Variables:
           BUCKET_NAME: !Ref DocumentsBucket
