@@ -38,3 +38,11 @@
 - No eliminar archivos existentes sin confirmación explícita
 - No modificar archivos de steering ni reglas de AI-DLC
 - No modificar docs/vision.md ni docs/tech-environment.md (son documentos de entrada, no de salida)
+
+## Build y Validación
+
+- No ejecutar `sam validate`, `sam build` ni `npm ls` durante la fase de Code Generation
+- Esos comandos se ejecutan únicamente en la fase de Build and Test
+- Para validar sintaxis de archivos JS, usar `node --check <archivo>`
+- Para validar YAML, no usar `yaml.safe_load` (no soporta tags de CloudFormation como !Sub, !Ref)
+- Si el shell reporta "No such file or directory" para cwd, indicar al usuario que abra un nuevo terminal en Kiro
