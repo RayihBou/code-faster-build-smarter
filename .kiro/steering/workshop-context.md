@@ -9,5 +9,13 @@ REGLA OBLIGATORIA DE IDIOMA:
 - Comentarios de código en español
 - Nombres de variables y funciones pueden estar en inglés (convención técnica estándar)
 - Documentación generada en aidlc-docs/ debe estar en español
+- TODOS los documentos generados deben respetar tildes y acentos del español (á, é, í, ó, ú, ñ, ü). NUNCA omitir tildes.
+- Nombres de archivos generados pueden estar en inglés (kebab-case) pero su CONTENIDO debe estar 100% en español
 
-El welcome message de AI-DLC debe presentarse traducido al español.
+REGLA OBLIGATORIA DE FORMATO:
+- NUNCA usar emojis en ninguna respuesta, documento generado ni interacción
+- Mantener un tono profesional y conciso
+- Usar viñetas simples (-, *) en vez de emojis como bullets
+- No usar iconos Unicode decorativos
+
+El welcome message de AI-DLC debe presentarse traducido al español sin emojis.
