@@ -32,6 +32,10 @@
 - Todo debe quedar en un solo stack de CloudFormation
 - Nombrar el stack de forma descriptiva (ej: code-faster-chatbot)
 - Incluir outputs en el template (URL del chatbot) para fácil acceso post-deploy
+- NUNCA indicar `sam deploy --guided` ni `sam deploy` directamente
+- Para desplegar, SIEMPRE indicar al usuario que ejecute: `./scripts/deploy.sh`
+- Este script solo solicita el correo electrónico del administrador y despliega automáticamente
+- Para eliminar, indicar: `./scripts/cleanup.sh`
 
 ## Modificaciones
 
